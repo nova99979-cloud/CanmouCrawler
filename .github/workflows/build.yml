@@ -1,0 +1,49 @@
+name: Build Windows Installer
+
+on:
+  push:
+    tags:
+      - 'v*'          # 推送标签时触发，如 v1.0.0
+  workflow_dispatch:  # 也支持手动触发
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install patchright
+          
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --onefile --name "参谋多平台采集台" `
+            --add-data "overseas_extract.py;." `
+            --add-data "overseas_assistant.py;." `
+            --hidden-import patchright.async_api `
+            --hidden-import patchright.sync_api `
+            --console app_server.py
+      
+      - name: Upload EXE as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: 参谋多平台采集台-Windows
+          path: dist/参谋多平台采集台.exe
+      
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/参谋多平台采集台.exe
+          name: 参谋多平台采集台 ${{ github.ref_name }}
+          body: |
+            Windows 安装包（单文件 exe，双击运行）
+            - 自动打开 http://127.0.0.1:8765
+            - 支持抖音 / TikTok / YouTube / Instagram / X 等
